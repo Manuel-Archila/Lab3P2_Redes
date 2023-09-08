@@ -19,6 +19,7 @@ class Flooding_Client(slixmpp.ClientXMPP):
         self.primera = True
         self.cont = []
         self.estados = []
+        self.mensajes_recibidos = {}
 
         # Se definen los manejadores de eventos
         self.add_event_handler("session_start", self.start)
@@ -106,7 +107,8 @@ class Flooding_Client(slixmpp.ClientXMPP):
             "headers": {
                 "origen": self.usu, 
                 "destino": to_jid,
-                "intermediarios": [self.usu]
+                "intermediarios": [self.usu],
+                "timestamp": time.time()
             },
             "payload": message
         }
@@ -129,7 +131,8 @@ class Flooding_Client(slixmpp.ClientXMPP):
             "headers": {
                 "origen": origen, 
                 "destino": to_jid,
-                "intermediarios": intermediarios
+                "intermediarios": intermediarios,
+                "timestamp": time.time()
             },
             "payload": message
         }
@@ -152,13 +155,29 @@ class Flooding_Client(slixmpp.ClientXMPP):
         if msg['type'] in ('chat', 'normal'):
 
             objeto = ast.literal_eval(msg['body'])
+
+            for key, item in self.mensajes_recibidos.items():
+                if item <= objeto['headers']['timestamp']:
+                    return
+            
+            self.mensajes_recibidos[objeto['headers']['origen']] = objeto['headers']['timestamp']
+
+
             if objeto['headers']['destino'] == self.usu:
                 print("El mensaje ha llegado correctamente.")
                 print(objeto['payload'])
                 print("*****************************************************")
                 
             else:
-                print(f"Mensaje de {objeto['headers']['origen']} hacia {objeto['headers']['destino']} recibido y reenviado a vecinos.")
+                s = objeto['headers']['origen']
+                pos = s.find('@')
+                origen = s[pos-1]
+
+                s = objeto['headers']['destino']
+                pos = s.find('@')
+                destino = s[pos-1]
+                
+                print(f"Mensaje de {origen} hacia {destino} recibido y reenviado a vecinos.")
                 try:
                     roster = self.client_roster
                     contacts = roster.keys()
@@ -168,7 +187,17 @@ class Flooding_Client(slixmpp.ClientXMPP):
                             await self.resendmessage(objeto['headers']['destino'], objeto['payload'], objeto['headers']['intermediarios'], objeto['headers']['origen'])
                 except:
                     print("Error al enviar el mensaje.")
-            
+
+    def eliminar_cuenta(self):
+        delete_stanza = f""" 
+                <iq type="set" id="delete-account">
+                <query xmlns="jabber:iq:register">
+                    <remove jid="{self.username}"/>
+                </query>
+                </iq>
+            """
+
+        print(self.send_raw(delete_stanza))    
 
 
     async def interactuar_con_cliente(self):
@@ -182,6 +211,7 @@ class Flooding_Client(slixmpp.ClientXMPP):
                 print("1) Mostrar vecinos.")
                 print("2) Agregar vecinos del nodo.")
                 print("3) Enviar un mensaje.")
+                print("4) Salir.")
                 print("*****************************************************\n")
 
                 # Se obtiene la opcion elegida
@@ -220,6 +250,12 @@ class Flooding_Client(slixmpp.ClientXMPP):
                     message = input("Ingrese el mensaje que desea enviar: ")
 
                     await self.sendmessage(jid, message)
+
+                elif opcion == '4':
+                    # eliminar cuenta
+                    self.eliminar_cuenta()
+                    self.disconnect()
+                    self.conectado = False
 
                 else:
                     print("Opción inválida. Por favor, ingrese un número válido.")
