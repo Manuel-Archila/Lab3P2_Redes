@@ -21,6 +21,10 @@ class LinkState_Client(slixmpp.ClientXMPP):
         self.mensajes_recibidos = {}
         self.topologia = {}
 
+        
+        self.sigue = True
+        self.tiempo = time.time()
+
         # Se definen los manejadores de eventos
         self.add_event_handler("session_start", self.start)
         self.add_event_handler('message', self.recibir_mensaje)
@@ -39,11 +43,66 @@ class LinkState_Client(slixmpp.ClientXMPP):
         print("Sesión iniciada correctamente. \n")
         await self.get_roster()
         await self.show_contacts()
-        
-        await self.obtener_topologia()
+        await self.obtener_vecinos()
 
         asyncio.create_task(self.interactuar_con_cliente())
 
+    async def obtener_vecinos(self):
+        s = self.usu
+        pos = s.find('@')
+        letra_origen = s[pos-1]
+        
+        entrada = input("Ingrese sus vecinos separados por coma: ")
+        entrada.lower() 
+        nodos = entrada.split(',')
+        nodos = [nodo.strip() for nodo in nodos]
+        self.topologia[letra_origen] = {}
+
+        for nodo in nodos:
+            self.topologia[letra_origen][nodo] = 1 
+
+            base = "archila161250"
+            jid = base + nodo.lower()
+            contacto = f"{jid}"+ "@alumchat.xyz"
+            
+            await self.add_contact(contacto)
+            
+        
+        await self.sendInfo(letra_origen, nodos)
+        
+        print("Vecinos agregados correctamente e información enviada a los vecinos.")
+        
+        while self.sigue:
+
+            if time.time() - self.tiempo > 45:
+                self.sigue = False
+                break
+            
+    async def sendInfo(self, origen, vecinos, intermediarios = []):
+
+        if intermediarios == []:
+            intermediarios.append(origen)
+            
+        paquete = {
+            "type": "info", 
+            "headers": {
+                "origen": origen, 
+                "intermediarios": intermediarios,
+            },
+            "payload": vecinos
+        }
+        paquete_string = str(paquete)
+
+        try:
+            roster = self.client_roster
+            contacts = roster.keys()
+            
+            for usuario in contacts:
+                if usuario != self.usu:
+                    self.send_message(mto=usuario, mbody=paquete_string, mtype='chat')
+        except:
+            print("Error al enviar el mensaje.")
+        
     async def show_contacts(self):
         # Se obtiene el roster y sus keys
         roster = self.client_roster
@@ -123,37 +182,11 @@ class LinkState_Client(slixmpp.ClientXMPP):
 
         print(f"La ruta es: {ruta}")
         
-        # paquete = {
-        #     "type": "message", 
-        #     "headers": {
-        #         "origen": self.usu, 
-        #         "destino": to_jid,
-        #         "intermediarios": [self.usu],
-        #         "timestamp": time.time()
-        #     },
-        #     "payload": message
-        # }
-        # paquete_string = str(paquete)
-
-        # try:
-        #     roster = self.client_roster
-        #     contacts = roster.keys()
-            
-        #     for usuario in contacts:
-        #         if usuario != self.usu:
-        #             self.send_message(mto=usuario, mbody=paquete_string, mtype='chat')
-        # except:
-        #     print("Error al enviar el mensaje.")
-
-    async def resendmessage(self, to_jid, message, intermediarios, origen):
-        intermediarios.append(self.usu)
         paquete = {
             "type": "message", 
             "headers": {
-                "origen": origen, 
-                "destino": to_jid,
-                "intermediarios": intermediarios,
-                "timestamp": time.time()
+                "origen": letra_origen, 
+                "destino": letra_destino
             },
             "payload": message
         }
@@ -164,8 +197,12 @@ class LinkState_Client(slixmpp.ClientXMPP):
             contacts = roster.keys()
             
             for usuario in contacts:
-                if usuario != self.usu:
+                letra = usuario.find('@')
+                letra = usuario[letra-1]
+                
+                if letra == siguiente:
                     self.send_message(mto=usuario, mbody=paquete_string, mtype='chat')
+
         except:
             print("Error al enviar el mensaje.")
 
@@ -175,69 +212,69 @@ class LinkState_Client(slixmpp.ClientXMPP):
 
             objeto = ast.literal_eval(msg['body'])
 
-            for key, item in self.mensajes_recibidos.items():
-                if item <= objeto['headers']['timestamp']:
+            if objeto['type'] == "info":
+
+                self.tiempo = time.time()   
+                origen = objeto['headers']['origen']
+                intermediarios = objeto['headers']['intermediarios']
+                
+                s = self.usu
+                pos = s.find('@')
+                letra_origen = s[pos-1]
+
+                if letra_origen in intermediarios:
                     return
+
+                payload = objeto['payload']
+
+                self.topologia[origen] = {}
+                for nodo in payload:
+                    self.topologia[origen][nodo] = 1
+                
+
+                intermediarios.append(letra_origen)
+                
+                await self.sendInfo(origen, payload, intermediarios) 
             
-            self.mensajes_recibidos[objeto['headers']['origen']] = objeto['headers']['timestamp']
-
-
-            if objeto['headers']['destino'] == self.usu:
-                print("El mensaje ha llegado correctamente.")
-                print(objeto['payload'])
-                print("*****************************************************")
-                
             else:
-                s = objeto['headers']['origen']
-                pos = s.find('@')
-                origen = s[pos-1]
-
-                s = objeto['headers']['destino']
-                pos = s.find('@')
-                destino = s[pos-1]
                 
-                print(f"Mensaje de {origen} hacia {destino} recibido y reenviado a vecinos.")
-                try:
-                    roster = self.client_roster
-                    contacts = roster.keys()
-                    
-                    for usuario in contacts:
-                        if usuario != self.usu and self.usu not in objeto['headers']['intermediarios']:
-                            await self.resendmessage(objeto['headers']['destino'], objeto['payload'], objeto['headers']['intermediarios'], objeto['headers']['origen'])
-                except:
-                    print("Error al enviar el mensaje.")
-    
-    async def obtener_topologia(self):
-        s = self.usu
-        pos = s.find('@')
-        letra_usuario = s[pos-1]
-        
-        print(f"El nombre del nodo es {letra_usuario}.")
+                s = self.usu
+                pos = s.find('@')
+                actual = s[pos-1]
 
-        entrada = input("Ingrese el nombre de todos los nodos separados por coma: ")
-        entrada.lower() 
-        nodos = entrada.split(',')
-        nodos = [nodo.strip() for nodo in nodos]
-        
-        vecinos = {}
-        for nodo in nodos:
-            for nodo2 in nodos:
-                if nodo != nodo2:
-                    es_vecino = input(f"Es el nodo {nodo} vecino del nodo {nodo2}? (s/n)")
-                    if es_vecino == "s":
-                        vecinos[nodo2] = 1
-                        if nodo == letra_usuario:
-                            base = "archila161250"
-                            jid = base + nodo2.lower()
-                            contacto = f"{jid}@alumchat.xyz"
-
-                            await self.add_contact(contacto)
+                if objeto['headers']['destino'] == actual:
+                    print(f"El mensaje de {objeto['headers']['origen']} ha llegado correctamente.")
+                    print(objeto['payload'])
+                    print("*****************************************************")
                     
-                    else:
-                        vecinos[nodo2] = 0
-                            
-            self.topologia[nodo] = vecinos
-            vecinos = {}
+                else:
+
+                    origen = objeto['headers']['origen']
+
+                    destino = objeto['headers']['destino']
+                    
+
+                    ruta = self.calcular_ruta(actual, destino)
+                    siguiente = ruta[0]
+                    while siguiente == actual:
+                        ruta.pop(0)
+                        siguiente = ruta[0]
+            
+                    
+                    print(f"Mensaje de {origen} hacia {destino} recibido y reenviado a vecinos.")
+                    try:
+                        roster = self.client_roster
+                        contacts = roster.keys()
+                        
+                        for usuario in contacts:
+                            letra = usuario.find('@')
+                            letra = usuario[letra-1]
+
+                            if letra == siguiente:
+                                self.send_message(mto=usuario, mbody=msg['body'], mtype='chat')
+                                
+                    except:
+                        print("Error al enviar el mensaje.")
     
     def calcular_ruta(self, origen, destino):
         # Inicializar distancias y predecesores
@@ -304,7 +341,7 @@ class LinkState_Client(slixmpp.ClientXMPP):
                 opcion = await ainput("Ingrese el número de la opción deseada: \n")
 
                 if opcion == "1":
-                    await self.show_contacts()
+                    #await self.show_contacts()
                     print(self.topologia)
 
                 elif opcion == "2":

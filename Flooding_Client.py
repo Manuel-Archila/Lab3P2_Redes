@@ -164,7 +164,7 @@ class Flooding_Client(slixmpp.ClientXMPP):
 
 
             if objeto['headers']['destino'] == self.usu:
-                print("El mensaje ha llegado correctamente.")
+                print(f"El mensaje de {objeto['headers']['origen']} ha llegado correctamente.")
                 print(objeto['payload'])
                 print("*****************************************************")
                 
