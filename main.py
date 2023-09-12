@@ -67,9 +67,28 @@ while True:
 
 
     elif choice == "3":
-        print("Has elegido DistanceVector")
+        print("Has elegido Distance Vector")
 
         print("Introduce tus credenciales de usuario para el uso del cliente XMPP")
+
+        base = "archila161250"
+        letra = input("Ingrese la letra del nuevo nodo: ")
+
+        jid = base + letra.lower()
+
+        password = jid
+
+        jid = f"{jid}@alumchat.xyz"
+
+
+        if register(jid, password) :
+            print("¡Cuenta creada exitosamente!")
+        else:
+            print("Error al crear la cuenta. Por favor, intente nuevamente.")
+            break
+
+        iniciar_sesionV(jid, password)
+        
 
 
     else:
