@@ -79,6 +79,7 @@ class LinkState_Client(slixmpp.ClientXMPP):
                 break
             
     async def sendInfo(self, origen, vecinos, intermediarios = []):
+        palabra_origen = "archila161250" + origen.lower()
 
         if intermediarios == []:
             intermediarios.append(origen)
@@ -86,7 +87,7 @@ class LinkState_Client(slixmpp.ClientXMPP):
         paquete = {
             "type": "info", 
             "headers": {
-                "origen": origen, 
+                "origen": palabra_origen, 
                 "intermediarios": intermediarios,
             },
             "payload": vecinos
@@ -185,8 +186,8 @@ class LinkState_Client(slixmpp.ClientXMPP):
         paquete = {
             "type": "message", 
             "headers": {
-                "origen": letra_origen, 
-                "destino": letra_destino
+                "origen": "archila161250" + letra_origen, 
+                "destino": "archila161250" + letra_destino
             },
             "payload": message
         }
@@ -227,6 +228,8 @@ class LinkState_Client(slixmpp.ClientXMPP):
 
                 payload = objeto['payload']
 
+                origen = origen[-1]
+                
                 self.topologia[origen] = {}
                 for nodo in payload:
                     self.topologia[origen][nodo] = 1

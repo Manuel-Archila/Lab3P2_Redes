@@ -4,6 +4,7 @@ import asyncio
 import time
 import ast
 import base64
+import datetime
 
 
 class Flooding_Client(slixmpp.ClientXMPP):
@@ -102,13 +103,17 @@ class Flooding_Client(slixmpp.ClientXMPP):
         print("Contacto agregado correctamente.")
 
     async def sendmessage(self, to_jid, message):
+
+        origen_temp = self.usu.split('@')[0]
+        destino_temp = to_jid.split('@')[0]
+
         paquete = {
             "type": "message", 
             "headers": {
-                "origen": self.usu, 
-                "destino": to_jid,
-                "intermediarios": [self.usu],
-                "timestamp": time.time()
+                "origen": origen_temp, 
+                "destino": destino_temp,
+                "intermediarios": [origen_temp],
+                "timestamp": datetime.datetime.now().timestamp()
             },
             "payload": message
         }
@@ -125,14 +130,16 @@ class Flooding_Client(slixmpp.ClientXMPP):
             print("Error al enviar el mensaje.")
 
     async def resendmessage(self, to_jid, message, intermediarios, origen):
-        intermediarios.append(self.usu)
+        actual = self.usu.split('@')[0]
+        
+        intermediarios.append(actual)
         paquete = {
             "type": "message", 
             "headers": {
                 "origen": origen, 
                 "destino": to_jid,
                 "intermediarios": intermediarios,
-                "timestamp": time.time()
+                "timestamp": datetime.datetime.now().timestamp()
             },
             "payload": message
         }
@@ -148,8 +155,6 @@ class Flooding_Client(slixmpp.ClientXMPP):
         except:
             print("Error al enviar el mensaje.")
 
-    
-
     async def recibir_mensaje(self, msg):
         # Se verifica si el mensaje es de tipo chat o normal
         if msg['type'] in ('chat', 'normal'):
@@ -157,25 +162,22 @@ class Flooding_Client(slixmpp.ClientXMPP):
             objeto = ast.literal_eval(msg['body'])
 
             for key, item in self.mensajes_recibidos.items():
-                if item <= objeto['headers']['timestamp']:
+                if item >= objeto['headers']['timestamp'] and key == objeto['headers']['origen']:
                     return
             
             self.mensajes_recibidos[objeto['headers']['origen']] = objeto['headers']['timestamp']
 
-
-            if objeto['headers']['destino'] == self.usu:
+            actual = self.usu.split('@')[0]
+            if objeto['headers']['destino'] == actual:
                 print(f"El mensaje de {objeto['headers']['origen']} ha llegado correctamente.")
                 print(objeto['payload'])
                 print("*****************************************************")
                 
             else:
-                s = objeto['headers']['origen']
-                pos = s.find('@')
-                origen = s[pos-1]
+                origen = objeto['headers']['origen']
+                
 
-                s = objeto['headers']['destino']
-                pos = s.find('@')
-                destino = s[pos-1]
+                destino = objeto['headers']['destino']
                 
                 print(f"Mensaje de {origen} hacia {destino} recibido y reenviado a vecinos.")
                 try:
@@ -183,7 +185,7 @@ class Flooding_Client(slixmpp.ClientXMPP):
                     contacts = roster.keys()
                     
                     for usuario in contacts:
-                        if usuario != self.usu and self.usu not in objeto['headers']['intermediarios']:
+                        if usuario != self.usu and actual not in objeto['headers']['intermediarios']:
                             await self.resendmessage(objeto['headers']['destino'], objeto['payload'], objeto['headers']['intermediarios'], objeto['headers']['origen'])
                 except:
                     print("Error al enviar el mensaje.")
@@ -198,7 +200,6 @@ class Flooding_Client(slixmpp.ClientXMPP):
             """
 
         print(self.send_raw(delete_stanza))    
-
 
     async def interactuar_con_cliente(self):
 

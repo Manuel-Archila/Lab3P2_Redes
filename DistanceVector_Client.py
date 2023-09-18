@@ -106,7 +106,8 @@ class DistanceVector_Client(slixmpp.ClientXMPP):
                 break
             
     async def sendInfo(self, origen, paylod = [] ,intermediarios = []):
-
+        palabra_origen = "archila161250" + origen.lower()
+        
         if intermediarios == []:
             intermediarios.append(origen)
         
@@ -116,7 +117,7 @@ class DistanceVector_Client(slixmpp.ClientXMPP):
         paquete = {
             "type": "info", 
             "headers": {
-                "origen": origen, 
+                "origen": palabra_origen, 
                 "intermediarios": intermediarios,
                 "timestamp": datetime.datetime.now().timestamp()
             },
@@ -221,8 +222,8 @@ class DistanceVector_Client(slixmpp.ClientXMPP):
         paquete = {
             "type": "message", 
             "headers": {
-                "origen": de, 
-                "destino": letra_destino
+                "origen": "archila161250" + de, 
+                "destino": "archila161250" + letra_destino
             },
             "payload": message
         }
@@ -243,20 +244,22 @@ class DistanceVector_Client(slixmpp.ClientXMPP):
             print("Error al enviar el mensaje.")
             
     async def actualizar_tabla(self, nodo, tabla, tempo):
+        nodo = nodo[-1]
 
-        if tempo <= self.times[nodo]:
-            return
-        else:
-            self.times[nodo] = tempo
+        if nodo in self.times:
+            if tempo <= self.times[nodo]:
+                return
+        
+        self.times[nodo] = tempo
 
-            for key in tabla:
-                if key != self.letra_origen:
-                    # Considere la distancia de la tabla recibida más la distancia al nodo del que recibió la información
-                    val = tabla[key] + self.topologia[nodo]
-                    # Actualice la distancia solo si es menor que la conocida
-                    if val < self.topologia[key]:
-                        self.rutas[key].append(nodo)
-                        self.topologia[key] = val
+        for key in tabla:
+            if key != self.letra_origen:
+                # Considere la distancia de la tabla recibida más la distancia al nodo del que recibió la información
+                val = tabla[key] + self.topologia[nodo]
+                # Actualice la distancia solo si es menor que la conocida
+                if val < self.topologia[key]:
+                    self.rutas[key].append(nodo)
+                    self.topologia[key] = val
 
 
         
@@ -294,7 +297,7 @@ class DistanceVector_Client(slixmpp.ClientXMPP):
                 await self.actualizar_tabla(origen, payload, tempo)
                 
                 
-                await self.sendInfo(origen, payload, intermediarios)
+                await self.sendInfo(origen[-1], payload, intermediarios)
             
             else:
                 
@@ -302,16 +305,16 @@ class DistanceVector_Client(slixmpp.ClientXMPP):
                 pos = s.find('@')
                 actual = s[pos-1]
 
-                if objeto['headers']['destino'] == actual:
+                if objeto['headers']['destino'][-1] == actual:
                     print(f"El mensaje de {objeto['headers']['origen']} ha llegado correctamente.")
                     print(objeto['payload'])
                     print("*****************************************************")
                     
                 else:
 
-                    origen = objeto['headers']['origen']
+                    origen = objeto['headers']['origen'][-1]
 
-                    destino = objeto['headers']['destino']
+                    destino = objeto['headers']['destino'][-1]
                     
 
                     rutA = self.rutas[destino]
