@@ -257,7 +257,7 @@ class LinkState_Client(slixmpp.ClientXMPP):
                     destino = objeto['headers']['destino']
                     
 
-                    ruta = self.calcular_ruta(actual, destino)
+                    ruta = self.calcular_ruta(actual, destino[-1])
                     siguiente = ruta[0]
                     while siguiente == actual:
                         ruta.pop(0)
