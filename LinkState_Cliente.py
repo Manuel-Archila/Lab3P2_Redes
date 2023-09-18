@@ -245,7 +245,7 @@ class LinkState_Client(slixmpp.ClientXMPP):
                 pos = s.find('@')
                 actual = s[pos-1]
 
-                if objeto['headers']['destino'] == actual:
+                if objeto['headers']['destino'][-1] == actual:
                     print(f"El mensaje de {objeto['headers']['origen']} ha llegado correctamente.")
                     print(objeto['payload'])
                     print("*****************************************************")
