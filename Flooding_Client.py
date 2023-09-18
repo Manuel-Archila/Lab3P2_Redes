@@ -129,7 +129,7 @@ class Flooding_Client(slixmpp.ClientXMPP):
         except:
             print("Error al enviar el mensaje.")
 
-    async def resendmessage(self, to_jid, message, intermediarios, origen):
+    async def resendmessage(self, to_jid, message, intermediarios, origen, time = None):
         actual = self.usu.split('@')[0]
         
         intermediarios.append(actual)
@@ -139,7 +139,7 @@ class Flooding_Client(slixmpp.ClientXMPP):
                 "origen": origen, 
                 "destino": to_jid,
                 "intermediarios": intermediarios,
-                "timestamp": datetime.datetime.now().timestamp()
+                "timestamp": time
             },
             "payload": message
         }
@@ -186,7 +186,7 @@ class Flooding_Client(slixmpp.ClientXMPP):
                     
                     for usuario in contacts:
                         if usuario != self.usu and actual not in objeto['headers']['intermediarios']:
-                            await self.resendmessage(objeto['headers']['destino'], objeto['payload'], objeto['headers']['intermediarios'], objeto['headers']['origen'])
+                            await self.resendmessage(objeto['headers']['destino'], objeto['payload'], objeto['headers']['intermediarios'], objeto['headers']['origen'], objeto['headers']['timestamp'])
                 except:
                     print("Error al enviar el mensaje.")
 
